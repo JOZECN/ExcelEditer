@@ -27,6 +27,15 @@ import java.awt.Color;
 public class ExcelEditer extends JFrame implements ActionListener{
 	private static File ifile;
 	private static File ofile;
+	private static int sheet_size;
+	private static int totalRow;
+	private static int totalCol;
+	private static int total;
+	private int[][] sogouTo360 = {
+		{1,1,1,2},
+		{1,2,1,3}
+	}; //页签，源列数，目的列数
+	
 	private static final int DEFAULT_WIDTH=500;
 	private static final int DEFAULT_HEIGHT=300;
 	private static JLabel ifLabel = new JLabel("来源表格 ：");
@@ -36,6 +45,7 @@ public class ExcelEditer extends JFrame implements ActionListener{
 	private static JButton ifButton = new JButton("选择");
 	private static JButton ofButton = new JButton("选择");
 	private static JButton wButton = new JButton("写入");
+	private static JLabel wLabel = new JLabel("");
 	private static JRadioButton rb360 = new JRadioButton("360");
 	private static JRadioButton rbshenma = new JRadioButton("神马");
 	private static JRadioButton rbsougou = new JRadioButton("搜狗");
@@ -103,6 +113,10 @@ public class ExcelEditer extends JFrame implements ActionListener{
 		wButton.setBounds(200, 220, 100, 30);
 		getContentPane().add(wButton);
 		
+		wLabel.setFont(new Font("宋体", Font.BOLD, 12));
+		wLabel.setBounds(320, 220, 100, 30);
+		getContentPane().add(wLabel);
+		
 		getContentPane().setLayout(null);
 		this.setTitle("Excel Editer By Jozecn");
 		this.setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -134,8 +148,11 @@ public class ExcelEditer extends JFrame implements ActionListener{
             @Override
             public void actionPerformed(ActionEvent e) {
             	//ofButtonMethod();
+            	wLabel.setForeground(Color.RED);
+            	wLabel.setText("写入中...");
+            	
             	obj.readExcel(ifile);
-            	obj.writeExcel(ofile);
+            	//obj.writeExcel(ofile);
             }
         });
 	}
@@ -172,43 +189,29 @@ public class ExcelEditer extends JFrame implements ActionListener{
 	    }
     }
 	
-	public void readExcel(File file) {  
+	public void readExcel(File file) {
         try {
-            // 创建输入流，读取Excel
-            InputStream is = new FileInputStream(file.getAbsolutePath());
-            // jxl提供的Workbook类 
-            Workbook wb = Workbook.getWorkbook(is);
-            // Excel的页签数量 
-            Sheet[] sheets = wb.getSheets();
-            if (sheets != null){
-            	for (Sheet sheet : sheets){
-            		// 获得行数
-            		int rows = sheet.getRows();
-            		// 获得列数
-            		int cols = sheet.getColumns();
-            		// 读取数据
-            		for (int row = 0; row < rows; row++){
-            			for (int col = 0; col < cols; col++){
-            				System.out.printf("%10s", sheet.getCell(col, row).getContents());
-            			}
-            			System.out.println();
-            		}
-            	}
-            }
-            wb.close();
-            /*int sheet_size = wb.getNumberOfSheets();  
+            InputStream is = new FileInputStream(file.getAbsolutePath()); // 创建输入流，读取Excel
+            Workbook wb = Workbook.getWorkbook(is); // jxl提供的Workbook类 
+            sheet_size = wb.getNumberOfSheets(); // Excel的页签数量 
             for (int index = 0; index < sheet_size; index++) {  
-                // 每个页签创建一个Sheet对象  
-                Sheet sheet = wb.getSheet(index);  
-                // sheet.getRows()返回该页的总行数
-                for (int i = 0; i < sheet.getRows(); i++) {  
-                    // sheet.getColumns()返回该页的总列数  
-                    for (int j = 0; j < sheet.getColumns(); j++) {  
-                        String cellinfo = sheet.getCell(j, i).getContents();  
-                        System.out.println(cellinfo);  
+                Sheet sheet = wb.getSheet(index); // 每个页签创建一个Sheet对象  
+                totalRow = sheet.getRows(); // 获得行数
+                totalCol = sheet.getColumns(); // 获得列数
+                total = totalRow * totalCol; // 获得表格单元格总数
+                System.out.println("当前：一共"+totalRow+"行，"+totalCol+"列，总计："+total);
+                WritableWorkbook wb2 = Workbook.createWorkbook(ofile);
+                WritableSheet sheet2 = wb2.createSheet("sheet1", 0);
+                for (int col = 0; col < totalCol; col++) {
+                    for (int row = 0; row < totalRow; row++) {
+                        String cellinfo = sheet.getCell(col, row).getContents();
+                        //if(cellinfo != null && !cellinfo.equals("")){
+                        	writeExcel(wb2,sheet2,sheet_size,row,col,cellinfo);
+                        //}
                     }  
                 }  
-            }*/
+            }
+            wb.close();
         } catch (FileNotFoundException e) {  
             e.printStackTrace();
         } catch (BiffException e) {  
@@ -218,24 +221,23 @@ public class ExcelEditer extends JFrame implements ActionListener{
         }
     }
 	
-	public void writeExcel(File file) {
+	public void writeExcel(WritableWorkbook wb,WritableSheet sheet,int sheet_size,int row,int col,String cellinfo) {
 		try{
-		    WritableWorkbook wb = Workbook.createWorkbook(file);
-		    WritableSheet sheet = wb.createSheet("sheet1", 0);
-		    for (int row = 1; row < 20; row++)
-		    {
-		       for (int col = 1; col < 20; col++)
-		       {
-		          sheet.addCell(new Label(col, row, "志鹏" + row + col));
-		       }
+		    System.out.println("当前："+(row+1)+"行，"+(col+1)+"列");
+		    System.out.println(cellinfo);
+		    sheet.addCell(new Label(col, row, cellinfo)); //写入表格单元格数据
+		    if((col+1)*(row+1) == total){
+		    	wb.write();
+		    	wb.close();
+		    	//System.out.println("done");
+		    	wLabel.setForeground(Color.GREEN);
+            	wLabel.setText("写入完成！");
 		    }
-		    wb.write();
-		    wb.close();
-		} catch (FileNotFoundException e) {  
+		} catch (FileNotFoundException e) {
             e.printStackTrace();
-        } catch (WriteException e) {  
+        } catch (WriteException e) {
             e.printStackTrace();
-        } catch (IOException e) {  
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
